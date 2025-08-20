@@ -1,0 +1,17 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: podinfo
+spec:
+  chart:
+    spec:
+      version: ">=1.0.0"
+  values:
+    replicas: 2
+    ingress:
+      hosts:
+        - host: 10.8.10.80.traefik.me
+          paths:
+            - path: /
+              pathType: ImplementationSpecific
+    

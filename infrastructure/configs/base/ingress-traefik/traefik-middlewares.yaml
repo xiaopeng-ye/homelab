@@ -1,0 +1,60 @@
+---
+# 全局安全头中间件
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: security-headers
+  namespace: traefik
+spec:
+  headers:
+    browserXssFilter: true
+    contentTypeNosniff: true
+    forceSTSHeader: true
+    stsIncludeSubdomains: true
+    stsPreload: true
+    stsSeconds: 31536000
+    frameDeny: true
+    referrerPolicy: "same-origin"
+    customRequestHeaders:
+      X-Forwarded-Proto: "https"
+---
+# HTTPS 重定向中间件
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: https-redirect
+  namespace: traefik
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true
+---
+# 默认认证中间件（可选）
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: default-auth
+  namespace: traefik
+spec:
+  basicAuth:
+    secret: traefik-dashboard-auth
+---
+# 压缩中间件
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: compression
+  namespace: traefik
+spec:
+  compress: {}
+---
+# 速率限制中间件
+apiVersion: traefik.containo.us/v1alpha1
+kind: Middleware
+metadata:
+  name: rate-limit
+  namespace: traefik
+spec:
+  rateLimit:
+    burst: 100
+    average: 50

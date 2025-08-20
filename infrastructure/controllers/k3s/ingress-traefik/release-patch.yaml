@@ -1,0 +1,98 @@
+---
+apiVersion: helm.toolkit.fluxcd.io/v2beta1
+kind: HelmRelease
+metadata:
+  name: traefik
+  namespace: traefik
+spec:
+  values:
+    # K3s 特定配置
+    deployment:
+      replicas: 2  # K3s 通常有多个节点，增加副本数
+      podDisruptionBudget:
+        enabled: true
+        minAvailable: 1
+    
+    # K3s 优化的端口配置
+    ports:
+      web:
+        # K3s 默认使用 NodePort，但我们使用 LoadBalancer
+        nodePort: 30080
+        redirectTo: websecure
+      websecure:
+        nodePort: 30443
+      metrics:
+        port: 9100
+        expose: true  # K3s 环境中启用 metrics
+        exposedPort: 9100
+        protocol: TCP
+    
+    # K3s 特定的服务配置
+    service:
+      type: LoadBalancer
+      annotations:
+        # K3s LoadBalancer 配置
+        metallb.universe.tf/loadBalancerIPs: ""  # 可以指定特定 IP
+      spec:
+        # K3s 网络优化
+        externalTrafficPolicy: Local  # 保留源 IP
+    
+    # K3s 资源优化
+    resources:
+      requests:
+        cpu: "50m"    # K3s 节点通常资源有限
+        memory: "64Mi"
+      limits:
+        cpu: "200m"   # 适中的资源限制
+        memory: "128Mi"
+    
+    # K3s 节点选择和容忍
+    nodeSelector: {}
+    tolerations:
+      # 允许在 master 节点上运行（K3s 单节点场景）
+      - key: "CriticalAddonsOnly"
+        operator: "Exists"
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
+      - key: "node-role.kubernetes.io/master"
+        operator: "Exists"
+        effect: "NoSchedule"
+    
+    # K3s 高可用配置
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                - traefik
+            topologyKey: kubernetes.io/hostname
+    
+    # K3s 环境的日志级别
+    logs:
+      general:
+        level: INFO  # K3s 环境中使用 INFO 级别
+      access:
+        enabled: true
+        bufferingSize: 50  # 较小的缓冲区
+    
+    # K3s 特定的附加参数
+    additionalArguments:
+      - "--serversTransport.insecureSkipVerify=true"
+      - "--log.level=INFO"
+      - "--accesslog=true"
+      - "--entrypoints.websecure.http.tls=true"
+      - "--api.dashboard=false"
+      - "--api.insecure=false"
+      - "--metrics.prometheus=true"
+      - "--metrics.prometheus.addEntryPointsLabels=true"
+      - "--metrics.prometheus.addServicesLabels=true"
+      - "--ping=true"
+      # K3s 特定优化
+      - "--providers.kubernetesingress.throttleduration=5s"
+      - "--providers.kubernetescrd.throttleduration=5s"

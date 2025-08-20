@@ -1,0 +1,414 @@
+# Traefik Configuration
+deployment:
+  enabled: true
+  # Pod disruption budget
+  podDisruptionBudget:
+    enabled: true
+    minAvailable: 1
+    # maxUnavailable: 1
+
+# Traefik logs level
+# Available levels: DEBUG, PANIC, FATAL, ERROR, WARN, INFO
+logs:
+  general:
+    level: ERROR
+  access:
+    enabled: true
+    # format: json
+    # filePath: "/var/log/traefik/access.log"
+    bufferingSize: 100
+    filters:
+      statuscodes: "400-499"
+
+ingressRoute:
+  dashboard:
+    enabled: false
+
+providers:
+  # Enable cross namespace references
+  kubernetesCRD:
+    enabled: true
+    allowCrossNamespace: true
+    allowExternalNameServices: true
+    allowEmptyServices: false
+    # ingressClass: traefik-internal
+    # labelSelector: environment=production,method=traefik
+    namespaces: []
+      # - "default"
+
+  kubernetesIngress:
+    enabled: true
+    allowExternalNameServices: true
+    allowEmptyServices: false
+    # ingressClass: traefik-internal
+    # labelSelector: environment=production,method=traefik
+    namespaces: []
+      # - "default"
+    # IP used for Kubernetes Ingress endpoints
+    publishedService:
+      enabled: false
+      # Published Kubernetes Service to copy status from. Format: namespace/servicename
+      # By default this Traefik service
+      # pathOverride: ""
+
+# Add volumes to the traefik pod. The volume name will be passed to tpl.
+# This can be used to mount a cert pair or a configmap that holds a config.toml file.
+# After the volume has been mounted, add the configs into traefik by using the `additionalArguments` list below
+volumes: []
+# - name: public-cert
+#   mountPath: "/certs"
+#   type: secret
+# - name: '{{ printf "%s-configs" .Release.Name }}'
+#   mountPath: "/configs"
+#   type: configMap
+
+# Additional volumeMounts to the traefik container
+additionalVolumeMounts: []
+  # For instance when using a logshipper for access logs
+  # - name: traefik-logs
+  #   mountPath: /var/log/traefik
+
+globalArguments:
+  - "--global.checknewversion"
+  - "--global.sendanonymoususage"
+
+# Configure Traefik static configuration
+additionalArguments: []
+  # Configure your CertificateResolver here...
+  #
+  # HTTP Challenge
+  # --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+  # --certificatesresolvers.letsencrypt.acme.email=your-email@domain.com
+  # --certificatesresolvers.letsencrypt.acme.storage=/data/acme.json
+  # HTTP Challenge with staging server
+  # --certificatesresolvers.letsencrypt-staging.acme.httpchallenge.entrypoint=web
+  # --certificatesresolvers.letsencrypt-staging.acme.email=your-email@domain.com
+  # --certificatesresolvers.letsencrypt-staging.acme.storage=/data/acme.json
+  # --certificatesresolvers.letsencrypt-staging.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory
+  #
+  # DNS Challenge with cloudflare, route53 or gandi
+  # --certificatesresolvers.letsencrypt.acme.dnschallenge.provider=cloudflare
+  # --certificatesresolvers.letsencrypt.acme.email=your-email@domain.com
+  # --certificatesresolvers.letsencrypt.acme.storage=/data/acme.json
+  # --certificatesresolvers.letsencrypt.acme.dnschallenge.resolvers=1.1.1.1:53,8.8.8.8:53
+
+# Environment variables to be passed to Traefik's binary
+env:
+  # - name: SOME_VAR
+  #   value: some-var-value
+  # - name: SOME_VAR_FROM_CONFIG_MAP
+  #   valueFrom:
+  #     configMapKeyRef:
+  #       name: configmap-name
+  #       key: config-key
+  # - name: SOME_SECRET
+  #   valueFrom:
+  #     secretKeyRef:
+  #       name: secret-name
+  #       key: secret-key
+
+envFrom: []
+  # - configMapRef:
+  #     name: config-map-name
+  # - secretRef:
+  #     name: secret-name
+
+# Configure ports
+ports:
+  web:
+    port: 8000
+    # hostPort: 8000
+    # containerPort: 8000
+    expose: true
+    exposedPort: 80
+    # The port protocol (TCP/UDP)
+    protocol: TCP
+    # Use nodeport if set. This is useful if you have configured Traefik in a
+    # LoadBalancer
+    # nodePort: 32080
+    # Port Redirections
+    # Added in 2.2, you can make permanent redirects via entrypoints.
+    # https://docs.traefik.io/routing/entrypoints/#redirection
+    redirectTo: websecure
+    #
+    # Trust forwarded  headers information (X-Forwarded-*)
+    forwardedHeaders:
+      # Traefik will only forward the client IP when it trusts the reverse proxy
+      trustedIPs: []
+      # Trust all forwarded headers
+      insecure: false
+    #
+    # Enable the Proxy Protocol header parsing for the entry point
+    proxyProtocol:
+      trustedIPs: []
+      insecure: false
+    #
+    # One can apply Middlewares on an entrypoint
+    # https://doc.traefik.io/traefik/middlewares/overview/
+    # https://doc.traefik.io/traefik/routing/entrypoints/#middlewares
+    # /!\ It introduces here a link between your static configuration and your dynamic configuration /!\
+    # It follows the provider naming convention: https://doc.traefik.io/traefik/providers/overview/#provider-namespace
+    # middlewares:
+    #   - namespace-name@kubernetescrd
+    #   - namespace-name@kubernetesingress
+    #   - namespace-name@file
+
+  websecure:
+    port: 8443
+    # hostPort: 8443
+    # containerPort: 8443
+    expose: true
+    exposedPort: 443
+    # The port protocol (TCP/UDP)
+    protocol: TCP
+    # nodePort: 32443
+    # Enable SPIFFE Workload API integration
+    # https://doc.traefik.io/traefik/https/spiffe/
+    spiffe:
+      ids: []
+    #
+    # Trust forwarded  headers information (X-Forwarded-*)
+    forwardedHeaders:
+      trustedIPs: []
+      insecure: false
+    #
+    # Enable the Proxy Protocol header parsing for the entry point
+    proxyProtocol:
+      trustedIPs: []
+      insecure: false
+    #
+    # One can apply Middlewares on an entrypoint
+    # https://doc.traefik.io/traefik/middlewares/overview/
+    # https://doc.traefik.io/traefik/routing/entrypoints/#middlewares
+    # /!\ It introduces here a link between your static configuration and your dynamic configuration /!\
+    # It follows the provider naming convention: https://doc.traefik.io/traefik/providers/overview/#provider-namespace
+    # middlewares:
+    #   - namespace-name@kubernetescrd
+    #   - namespace-name@kubernetesingress
+    #   - namespace-name@file
+
+# TLS Options are created as TLSOption CRDs
+# https://doc.traefik.io/traefik/https/tls/#tls-options
+# When using `labelSelector`, you'll need to set labels on tlsOption accordingly.
+# Example:
+# tlsOptions:
+#   default:
+#     labels: {}
+#     sslStrategies:
+#       - "tls.SniStrict"
+#     alpnProtocols:
+#       - "h2"
+#       - "http/1.1"
+#     cipherSuites:
+#       - "TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384"
+#       - "TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305"
+#       - "TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256"
+#       - "TLS_ECDHE_RSA_WITH_AES_128_CBC_SHA256"
+#     curvePreferences:
+#       - CurveP521
+#       - CurveP384
+#     minVersion: "VersionTLS12"
+#     maxVersion: "VersionTLS13"
+
+tlsOptions: {}
+
+# TLS Store are created as TLSStore CRDs. This is useful if you want to set a default certificate
+# https://doc.traefik.io/traefik/https/tls/#default-certificate
+# When using `labelSelector`, you'll need to set labels on tlsStore accordingly.
+# Example:
+# tlsStore:
+#   default:
+#     labels: {}
+#     defaultCertificate:
+#       secretName: tls-cert
+
+tlsStore: {}
+
+service:
+  enabled: true
+  type: LoadBalancer
+  # Additional annotations applied to both TCP and UDP services (e.g. for cloud provider specific config)
+  annotations: {}
+  # Additional annotations for TCP service only
+  annotationsTCP: {}
+  # Additional annotations for UDP service only
+  annotationsUDP: {}
+  # Additional service labels (e.g. for filtering Service by custom labels)
+  labels: {}
+  # Additional entries here will be added to the service spec.
+  # Cannot contain type, selector or ports entries.
+  spec: {}
+    # externalTrafficPolicy: Cluster
+    # loadBalancerIP: "1.2.3.4"
+    # clusterIP: "2.3.4.5"
+  loadBalancerSourceRanges: []
+    # - 192.168.1.7/32
+    # - 172.16.0.0/16
+  externalIPs: []
+    # - 1.2.3.4
+
+## Create HorizontalPodAutoscaler object.
+##
+autoscaling:
+  enabled: false
+#   minReplicas: 1
+#   maxReplicas: 10
+#   metrics:
+#   - type: Resource
+#     resource:
+#       name: cpu
+#       target:
+#         type: Utilization
+#         averageUtilization: 60
+#   - type: Resource
+#     resource:
+#       name: memory
+#       target:
+#         type: Utilization
+#         averageUtilization: 60
+#   behavior:
+#     scaleDown:
+#       stabilizationWindowSeconds: 300
+#       policies:
+#       - type: Pods
+#         value: 1
+#         periodSeconds: 60
+
+# Enable persistence using Persistent Volume Claims
+# ref: http://kubernetes.io/docs/user-guide/persistent-volumes/
+# After the pvc has been mounted, add the configs into traefik by using the `additionalArguments` list below
+persistence:
+  enabled: false
+  name: data
+#  existingClaim: ""
+  accessMode: ReadWriteOnce
+  size: 128Mi
+  # storageClass: ""
+  path: /data
+  annotations: {}
+  # -- Only mount a subpath of the Volume into the pod
+  # subPath: ""
+
+# If hostNetwork is true, runs traefik in the host network namespace
+# To prevent unschedulabel pods due to port collisions, if hostNetwork=true
+# and replicas>1, a pod anti-affinity is recommended and will be set if the
+# affinity is left as default.
+hostNetwork: false
+
+# Use process namespace sharing
+shareProcessNamespace: false
+
+# Custom pod DNS policy. Apply if `hostNetwork: true`
+# dnsPolicy: ClusterFirstWithHostNet
+
+# Additional initContainers (e.g. for setting file permission as shown below)
+initContainers: []
+  # The "volume-permissions" init container is required if you run into permission issues.
+  # Related issue: https://github.com/traefik/traefik-helm-chart/issues/396
+  # - name: volume-permissions
+  #   image: busybox:1.31.1
+  #   command: ["sh", "-c", "chmod -Rv 600 /data/*"]
+  #   volumeMounts:
+  #     - name: data
+  #       mountPath: /data
+
+# Additional containers (e.g. for metric offloading sidecars)
+additionalContainers: []
+  # https://docs.datadoghq.com/developers/dogstatsd/unix_socket/?tab=host
+  # - name: socat-proxy
+  # image: alpine/socat:1.0.5
+  # args: ["-s", "-u", "udp-recv:8125", "unix-sendto:/socket/socket"]
+  # volumeMounts:
+  #   - name: dsdsocket
+  #     mountPath: /socket
+
+# All Traefik's ports
+ingressClass:
+  # true is not unit-testable yet, pending https://github.com/rancher/helm-unittest/pull/12
+  enabled: true
+  isDefaultClass: true
+  # Use to force a networking.k8s.io API Version for certain CI/CD applications. E.g. "v1beta1"
+  fallbackApiVersion: ""
+
+# Activate Pilot integration
+pilot:
+  enabled: false
+  # token: ""
+  # dashboard: false
+
+# Enable experimental features
+experimental:
+  plugins:
+    enabled: false
+  kubernetesGateway:
+    enabled: false
+    gateway:
+      enabled: true
+      # By default, Gateway would be created to the Namespace you are deploying Traefik to.
+      # You may create that Gateway in another namespace, however this will require manually patching the namespace references in the Gateway definition.
+      namespace: default
+      # Additional gateway annotations (e.g. for cert-manager.io/issuer)
+      annotations: {}
+      # Additional gateway labels (e.g. for filtering Gateway by custom labels)
+      labels: {}
+      listeners: []  # Use [] to defer to chart default (see below)
+        # -- port is the network port. Multiple listeners may use the
+        # -- same port, subject to the Listener compatibility rules.
+        # - port: 80
+        #   name: web
+        #   protocol: HTTP
+        # - port: 443
+        #   name: websecure
+        #   protocol: HTTPS
+
+# Create a default IngressClass for Traefik
+resources: {}
+  # requests:
+  #   cpu: "100m"
+  #   memory: "50Mi"
+  # limits:
+  #   cpu: "300m"
+  #   memory: "150Mi"
+
+affinity: {}
+# # This example pod anti-affinity forces the scheduler to put traefik pods
+# # on nodes where no other traefik pods are scheduled.
+# # It should be used when hostNetwork: true to prevent port conflicts
+# podAntiAffinity:
+#   requiredDuringSchedulingIgnoredDuringExecution:
+#     - labelSelector:
+#         matchExpressions:
+#           - key: app.kubernetes.io/name
+#             operator: In
+#             values:
+#               - traefik
+#       topologyKey: kubernetes.io/hostname
+
+nodeSelector: {}
+tolerations: []
+topologySpreadConstraints: []
+# # This example topologySpreadConstraints forces the scheduler to put traefik pods
+# # on nodes where no other traefik pods are scheduled.
+# - maxSkew: 1
+#   topologyKey: kubernetes.io/hostname
+#   whenUnsatisfiable: DoNotSchedule
+#   labelSelector:
+#     matchLabels:
+#       app: traefik
+
+# Pods can have priority.
+# Priority indicates the importance of a Pod relative to other Pods.
+priorityClassName: ""
+
+# Set the container security context
+# To run the container with ports below 1024 this will need to be adjust to run as root
+securityContext:
+  capabilities:
+    drop: [ALL]
+  readOnlyRootFilesystem: true
+  runAsGroup: 65532
+  runAsNonRoot: true
+  runAsUser: 65532
+
+podSecurityContext:
+  fsGroup: 65532

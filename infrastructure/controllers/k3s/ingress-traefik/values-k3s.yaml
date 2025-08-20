@@ -1,0 +1,28 @@
+---
+# K3s 环境特定的 values 配置文件
+# 可以通过 ConfigMap 的方式使用
+
+# SSL 证书配置 (可选)
+additionalArguments:
+  # Let's Encrypt HTTP Challenge
+  - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+  - "--certificatesresolvers.letsencrypt.acme.email=your-email@domain.com"
+  - "--certificatesresolvers.letsencrypt.acme.storage=/data/acme.json"
+  
+  # Let's Encrypt Staging (测试用)
+  - "--certificatesresolvers.letsencrypt-staging.acme.httpchallenge.entrypoint=web"
+  - "--certificatesresolvers.letsencrypt-staging.acme.email=your-email@domain.com"  
+  - "--certificatesresolvers.letsencrypt-staging.acme.storage=/data/acme-staging.json"
+  - "--certificatesresolvers.letsencrypt-staging.acme.caserver=https://acme-staging-v02.api.letsencrypt.org/directory"
+
+# 持久化存储 (用于 SSL 证书)
+persistence:
+  enabled: true
+  size: 128Mi
+  accessMode: ReadWriteOnce
+  # storageClass: "local-path"  # K3s 默认存储类
+
+# K3s 特定的环境变量
+env:
+  - name: TRAEFIK_LOG_LEVEL
+    value: "INFO"

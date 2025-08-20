@@ -1,4 +1,6 @@
+/.claude
 .env
 /misc
 /k3s-ansible
-
+/terraform
+pub-cert.pem

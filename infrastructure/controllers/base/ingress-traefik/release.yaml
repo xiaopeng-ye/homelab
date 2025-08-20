@@ -1,0 +1,260 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: traefik
+  namespace: traefik
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: traefik
+      version: '*'
+      sourceRef:
+        kind: HelmRepository
+        name: traefik
+        namespace: traefik
+      interval: 12h
+  values:
+    global:
+      checkNewVersion: true
+      sendAnonymousUsage: false
+
+    api:
+      dashboard: true
+      insecure: false
+
+    logs:
+      general:
+        level: INFO
+      access:
+        enabled: true
+      #   bufferingSize: 100
+      #   filters:
+
+    deployment:
+      enabled: true
+      replicas: 1
+      annotations: {}
+      podAnnotations: {}
+      additionalContainers: []
+      initContainers: []
+
+    ports:
+      web:
+        redirections:
+          entryPoint:
+            to: websecure
+            permanent: true
+      websecure:
+        tls:
+          enabled: true
+
+    ingressRoute:
+      dashboard:
+        enabled: true
+        services:
+          - name: api@internal
+            kind: TraefikService
+        matchRule: Host(`traefik.myhomelab.dpdns.org`) && (PathPrefix(`/api`) || PathPrefix(`/dashboard`))
+        entryPoints:
+          - websecure
+        tls:
+          secretName: myhomelab-tls
+
+    providers:
+      kubernetesCRD:
+        enabled: true
+        ingressClass: traefik
+      kubernetesIngress:
+        enabled: true
+        publishedService:
+          enabled: false
+      # kubernetesGateway:
+      #   enabled: true
+
+    rbac:
+      enabled: true
+
+    service:
+      enabled: true
+      type: LoadBalancer
+      annotations: {}
+      labels: {}
+      spec: {}
+      loadBalancerSourceRanges: []
+      externalIPs: []
+
+    # additionalArguments:
+    #   - "--serversTransport.insecureSkipVerify=true"
+      
+  # # Traefik deployment configuration
+  #   deployment:
+  #     enabled: true
+  #     replicas: 1
+  #     annotations: {}
+  #     podAnnotations: {}
+  #     additionalContainers: []
+  #
+  #   # Traefik logs configuration
+  #   logs:
+  #     general:
+  #       level: INFO
+  #     access:
+  #       enabled: true
+  #       bufferingSize: 100
+  #       filters:
+  #         statuscodes: "400-499"
+    
+  #   # Dashboard configuration (disabled by default for security)
+  #   ingressRoute:
+  #     dashboard:
+  #       enabled: false
+    
+  #   # Providers configuration
+  #   providers:
+  #     kubernetesCRD:
+  #       enabled: true
+  #       allowCrossNamespace: true
+  #       allowExternalNameServices: true
+  #       allowEmptyServices: false
+  #     kubernetesIngress:
+  #       enabled: true
+  #       allowExternalNameServices: true
+  #       allowEmptyServices: false
+  #       publishedService:
+  #         enabled: false
+    
+  #   # Global arguments
+  #   globalArguments:
+  #     - "--global.checknewversion"
+  #     - "--global.sendanonymoususage"
+    
+  #   # Additional arguments for SSL certificates, API, metrics, etc.
+  #   additionalArguments:
+  #     - "--serversTransport.insecureSkipVerify=true"
+  #     - "--log.level=INFO"
+  #     - "--accesslog=true"
+  #     - "--entrypoints.websecure.http.tls=true"
+  #     - "--api.dashboard=false"
+  #     - "--api.insecure=false"
+  #     - "--metrics.prometheus=true"
+  #     - "--metrics.prometheus.addEntryPointsLabels=true"
+  #     - "--metrics.prometheus.addServicesLabels=true"
+  #     - "--ping=true"
+    
+  #   # Port configuration
+  #   ports:
+  #     web:
+  #       port: 8000
+  #       expose: true
+  #       exposedPort: 80
+  #       protocol: TCP
+  #       redirectTo: websecure
+  #       forwardedHeaders:
+  #         trustedIPs: []
+  #         insecure: false
+  #       proxyProtocol:
+  #         trustedIPs: []
+  #         insecure: false
+  #     websecure:
+  #       port: 8443
+  #       expose: true
+  #       exposedPort: 443
+  #       protocol: TCP
+  #       forwardedHeaders:
+  #         trustedIPs: []
+  #         insecure: false
+  #       proxyProtocol:
+  #         trustedIPs: []
+  #         insecure: false
+  #     metrics:
+  #       port: 9100
+  #       expose: false
+  #       exposedPort: 9100
+  #       protocol: TCP
+    
+  #   # Service configuration
+  #   service:
+  #     enabled: true
+  #     type: LoadBalancer
+  #     annotations: {}
+  #     labels: {}
+  #     spec: {}
+  #     loadBalancerSourceRanges: []
+  #     externalIPs: []
+    
+  #   # Autoscaling configuration
+  #   autoscaling:
+  #     enabled: false
+    
+  #   # Persistence configuration
+  #   persistence:
+  #     enabled: false
+  #     name: data
+  #     accessMode: ReadWriteOnce
+  #     size: 128Mi
+  #     path: /data
+  #     annotations: {}
+    
+  #   # Network configuration
+  #   hostNetwork: false
+  #   shareProcessNamespace: false
+    
+  #   # IngressClass configuration
+  #   ingressClass:
+  #     enabled: true
+  #     isDefaultClass: true
+  #     fallbackApiVersion: ""
+    
+  #   # Pilot integration
+  #   pilot:
+  #     enabled: false
+    
+  #   # Experimental features
+  #   experimental:
+  #     plugins:
+  #       enabled: false
+  #     kubernetesGateway:
+  #       enabled: false
+    
+  #   # Resource limits
+  #   resources:
+  #     requests:
+  #       cpu: "100m"
+  #       memory: "50Mi"
+  #     limits:
+  #       cpu: "300m"
+  #       memory: "150Mi"
+    
+  #   # Security context
+  #   securityContext:
+  #     capabilities:
+  #       drop: [ALL]
+  #     readOnlyRootFilesystem: true
+  #     runAsGroup: 65532
+  #     runAsNonRoot: true
+  #     runAsUser: 65532
+    
+  #   podSecurityContext:
+  #     fsGroup: 65532
+    
+  #   # Node selection and tolerations
+  #   nodeSelector: {}
+  #   tolerations: []
+  #   affinity: {}
+  #   topologySpreadConstraints: []
+    
+  #   # Priority class
+  #   priorityClassName: ""
+  # install:
+  #   createNamespace: true
+  #   remediation:
+  #     retries: 3
+  # upgrade:
+  #   cleanupOnFail: true
+  #   remediation:
+  #     retries: 3
+  # rollback:
+  #   timeout: 10m
+  #   recreate: true
+  #   cleanupOnFail: true

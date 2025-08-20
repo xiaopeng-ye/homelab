@@ -1,0 +1,37 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: longhorn-release
+  namespace: longhorn-system
+spec:
+  chart:
+    spec:
+      chart: longhorn
+      reconcileStrategy: ChartVersion
+      sourceRef:
+        kind: HelmRepository
+        name: longhorn-repo
+      version: "*"
+  interval: 1m0s
+  values:
+    persistence:
+      defaultClass: true
+    longhornManager:
+      log:
+        format: plain
+      nodeSelector: {}
+    longhornUI:
+      log:
+        format: plain
+      replicas: 1
+    csi:
+      attacherReplicaCount: 1
+      provisionerReplicaCount: 1
+      resizerReplicaCount: 1
+      snapshotterReplicaCount: 1
+    ingress:
+      enabled: enable
+      ingressClassName: traefik
+      host: longhorn.myhomelab.dpdns.org
+      tls: true
+      tlsSecret: myhomelab-tls

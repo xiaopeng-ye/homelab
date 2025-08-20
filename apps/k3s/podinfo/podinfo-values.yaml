@@ -1,0 +1,17 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: podinfo
+spec:
+  chart:
+    spec:
+      version: ">=1.0.0"
+  values:
+    replicas: 1
+    ingress:
+      hosts:
+        - host: podinfo.myhomelab.dpdns.org
+          paths:
+            - path: /
+              pathType: ImplementationSpecific
+    

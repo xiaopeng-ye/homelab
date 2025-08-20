@@ -1,0 +1,40 @@
+apiVersion: helm.toolkit.fluxcd.io/v2
+kind: HelmRelease
+metadata:
+  name: cert-manager
+  namespace: cert-manager
+spec:
+  interval: 30m
+  chart:
+    spec:
+      chart: cert-manager
+      version: "1.x"
+      sourceRef:
+        kind: HelmRepository
+        name: jetstack
+        namespace: cert-manager
+      interval: 12h
+  values:
+    crds:
+      # This option decides if the CRDs should be installed
+      # as part of the Helm installation.
+      enabled: true
+
+      # This option makes it so that the "helm.sh/resource-policy": keep
+      # annotation is added to the CRD. This will prevent Helm from uninstalling
+      # the CRD when the Helm release is uninstalled.
+      # WARNING: when the CRDs are removed, all cert-manager custom resources
+      # (Certificates, Issuers, ...) will be removed too by the garbage collector.
+      keep: true
+
+    replicaCount: 1
+
+    # dns01RecursiveNameservers: "1.1.1.1:53,9.9.9.9:53"
+    # dns01RecursiveNameserversOnly: true
+
+    # podDnsPolicy: None
+    # podDnsConfig:
+    #   nameservers:
+    #     - "1.1.1.1"
+    #     - "9.9.9.9"
+

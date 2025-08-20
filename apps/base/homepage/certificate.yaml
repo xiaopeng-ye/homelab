@@ -1,0 +1,14 @@
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: myhomelab-certificate
+  namespace: homepage
+spec:
+  secretName: myhomelab-tls
+  issuerRef:
+    name: letsencrypt-staging
+    kind: ClusterIssuer
+  commonName: "*.myhomelab.dpdns.org"
+  dnsNames:
+    - "myhomelab.dpdns.org"
+    - "*.myhomelab.dpdns.org"
